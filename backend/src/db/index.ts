@@ -69,10 +69,85 @@ pool.getConnection()
 
 export const runMigration = async () => {
     try {
-        await pool.query(`ALTER TABLE bookings ADD COLUMN custom_answers JSON NULL;`);
-        console.log("Migration successful");
+        console.log("[DB] Running auto-migrations...");
+        
+        // 1. Users table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_users_email (email)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // 2. Event Types table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS event_types (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_id BIGINT UNSIGNED NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                description TEXT NULL,
+                duration_minutes INT UNSIGNED NOT NULL,
+                slug VARCHAR(255) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_event_types_slug (slug),
+                KEY idx_event_types_user_id (user_id),
+                CONSTRAINT fk_event_types_user_id FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // 3. Availability table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS availability (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                user_id BIGINT UNSIGNED NOT NULL,
+                day_of_week TINYINT UNSIGNED NOT NULL,
+                start_time VARCHAR(8) NOT NULL,
+                end_time VARCHAR(8) NOT NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_availability_user_id (user_id),
+                CONSTRAINT fk_availability_user_id FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // 4. Bookings table
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS bookings (
+                id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+                event_type_id BIGINT UNSIGNED NOT NULL,
+                user_id BIGINT UNSIGNED NOT NULL,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) NOT NULL,
+                start_time DATETIME NOT NULL,
+                end_time DATETIME NOT NULL,
+                status ENUM('pending', 'confirmed', 'cancelled') NOT NULL DEFAULT 'confirmed',
+                custom_answers JSON NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_bookings_event_type_id (event_type_id),
+                KEY idx_bookings_user_id (user_id),
+                CONSTRAINT fk_bookings_event_type_id FOREIGN KEY (event_type_id)
+                    REFERENCES event_types(id) ON DELETE CASCADE ON UPDATE CASCADE,
+                CONSTRAINT fk_bookings_user_id FOREIGN KEY (user_id)
+                    REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `);
+
+        // 5. Default User
+        await pool.query(`
+            INSERT IGNORE INTO users (id, name, email) 
+            VALUES (1, 'Default User', 'user@example.com');
+        `);
+
+        console.log("[DB] Auto-migrations completed successfully");
     } catch(e) {
-        console.log("Migration failed or already applied", e);
+        console.error("[DB] Migration FAILED:", e);
     }
 }
 
