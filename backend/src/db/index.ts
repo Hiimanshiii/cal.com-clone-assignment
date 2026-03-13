@@ -1,41 +1,59 @@
 import 'dotenv/config';
 import { createPool } from 'mysql2/promise';
 
-const dbConfig = process.env.DATABASE_URL || process.env.MYSQL_URL;
+// Helper to get trimmed env var
+const getEnv = (key: string) => process.env[key]?.trim();
+
+const dbUrl = getEnv('DATABASE_URL') || getEnv('MYSQL_URL') || getEnv('MYSQL_PUBLIC_URL');
+const dbHost = getEnv('DB_HOST') || 'localhost';
+const dbUser = getEnv('DB_USER') || 'root';
+const dbPass = getEnv('DB_PASSWORD') || '';
+const dbName = getEnv('DB_NAME') || 'railway';
+const dbPort = Number(getEnv('DB_PORT') || 3306);
 
 // Debugging logs to help the user verify Render Env Vars
-console.log('[DB] Environment variable check:');
-Object.keys(process.env).forEach(key => {
-  if (key.includes('DB_') || key.includes('MYSQL_') || key === 'DATABASE_URL') {
-    const val = process.env[key];
+console.log('[DB] Environment variable check (TRIMMED):');
+[
+  'DATABASE_URL', 'MYSQL_URL', 'MYSQL_PUBLIC_URL', 
+  'DB_HOST', 'DB_PORT', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'
+].forEach(key => {
+  const val = process.env[key];
+  if (val) {
     const masked = (key.includes('PASS') || key.includes('URL')) 
-      ? (val ? `${val.substring(0, 4)}***` : 'undefined')
-      : val;
+      ? `${val.trim().substring(0, 4)}***` 
+      : `"${val.trim()}"`;
     console.log(`[DB] Found ${key}: ${masked}`);
   }
 });
 
-if (dbConfig) {
-  console.log('[DB] Connecting using string mode');
-} else {
-  console.log(`[DB] Connecting to host: ${process.env.DB_HOST || 'localhost'} (object mode)`);
-}
-
-export const pool = dbConfig 
-  ? createPool(dbConfig) 
+export const pool = dbUrl 
+  ? createPool(dbUrl) 
   : createPool({
-      host: process.env.DB_HOST ?? 'localhost',
-      port: Number(process.env.DB_PORT ?? 3306),
-      user: process.env.DB_USER ?? 'root',
-      password: process.env.DB_PASSWORD ?? '',
-      database: process.env.DB_NAME ?? 'calcom',
+      host: dbHost,
+      port: dbPort,
+      user: dbUser,
+      password: dbPass,
+      database: dbName,
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,
-      ssl: process.env.DB_HOST && process.env.DB_HOST !== 'localhost'
-        ? { rejectUnauthorized: false }
-        : undefined,
+      ssl: dbHost !== 'localhost' ? { rejectUnauthorized: false } : undefined,
     });
+
+// Test connection immediately at startup
+pool.getConnection()
+  .then(conn => {
+    console.log(`[DB] Success! Connected to ${dbUrl ? 'URL' : dbHost} as ${dbUser}`);
+    conn.release();
+  })
+  .catch(err => {
+    console.error('[DB] Connection Test FAILED!');
+    console.error(`[DB] Error Code: ${err.code}`);
+    console.error(`[DB] Error Message: ${err.message}`);
+    if (err.message.includes('Access denied')) {
+      console.error('[DB] Recommendation: Double-check your DB_PASSWORD and DB_USER in Render.');
+    }
+  });
 
 
 export const runMigration = async () => {
