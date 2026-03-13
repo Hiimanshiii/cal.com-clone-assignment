@@ -1,0 +1,1 @@
+// Auth guard component placeholder
