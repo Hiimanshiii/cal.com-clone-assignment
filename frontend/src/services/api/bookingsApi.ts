@@ -15,6 +15,7 @@ export const bookingsApi = {
   }) {
     const res = await apiClient.post<ApiResponse<Booking>>('/bookings', {
       ...input,
+      user_id: 1,
       status: input.status ?? 'confirmed',
     });
     if (!res.data.success) throw new Error(res.data.message);

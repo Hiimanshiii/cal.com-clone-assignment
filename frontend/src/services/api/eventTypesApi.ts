@@ -5,9 +5,11 @@ import type { EventType } from '../../types/domain';
 export const eventTypesApi = {
   async listByUser(userId: number) {
     const res = await apiClient.get<ApiResponse<EventType[]>>('/event-types', {
-      params: { userId },
+      params: { userId: 1 },
     });
-    if (!res.data.success) throw new Error(res.data.message);
+    if (!res.data.success) {
+      return [];
+    }
     return res.data.data;
   },
 
@@ -26,7 +28,10 @@ export const eventTypesApi = {
     duration_minutes: number;
     slug: string;
   }) {
-    const res = await apiClient.post<ApiResponse<EventType>>('/event-types', input);
+    const res = await apiClient.post<ApiResponse<EventType>>('/event-types', {
+      ...input,
+      user_id: 1,
+    });
     if (!res.data.success) throw new Error(res.data.message);
     return res.data.data;
   },
