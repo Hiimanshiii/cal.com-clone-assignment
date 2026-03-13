@@ -28,4 +28,25 @@ Landing Page- A modern UI inspired by Cal.com. Includes: Scheduling preview card
 
 Booking Flow: Create event type Set availability Share booking link User selects date & slot Booking created Confirmation email sent Meeting link generated Booking visible in dashboard
 
+## Screenshots
+
+### Landing Page
+![Landing Page 1](./screenshots/mainpage.png)
+![Landing Page 2](./screenshots/mainpage2.png)
+
+### Event Types
+![Event Types](./screenshots/eventtypes.png)
+
+### Availability Management
+![Availability](./screenshots/availability.png)
+
+### Bookings Dashboard
+![Bookings](./screenshots/bookings.png)
+
+### Booking Confirmation
+![Booking Confirmation](./screenshots/bookingconfirmation.png)
+
+### Teams
+![Teams](./screenshots/teams.png)
+
 Author Himanshi Chauhan
